@@ -12,11 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAlertRouter = void 0;
+exports.routes = void 0;
 const express_1 = __importDefault(require("express"));
 const bot_1 = require("./bot");
+const supabase_js_1 = require("@supabase/supabase-js");
 const router = express_1.default.Router();
-router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.post("/send-alert", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId, message } = req.body;
     if (!userId || !message) {
         return res.status(400).json({ error: "Missing userId or message" });
@@ -30,4 +31,34 @@ router.post("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.status(500).json({ error: "Failed to send alert" });
     }
 }));
-exports.sendAlertRouter = router;
+router.post("/link-telegram", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { token, userId } = req.body;
+    const serviceKey = process.env.SERVICE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const telegramTokenTable = "Telegram_token";
+    const userTable = "User";
+    const supabase = (0, supabase_js_1.createClient)(supabaseUrl, serviceKey);
+    const { data: tokenData, error: tokenError } = yield supabase
+        .from(telegramTokenTable)
+        .select("telegram_user_id")
+        .eq("token", token)
+        .single();
+    if (tokenError || !tokenData) {
+        return res.status(400).send({ message: "Token vencida o no existente." });
+    }
+    const telegramId = tokenData.telegram_user_id;
+    const { data, error } = yield supabase
+        .from(userTable)
+        .update({ telegram_id: telegramId })
+        .eq("uuid", userId);
+    if (error) {
+        return res
+            .status(500)
+            .send({ message: "Error al enlazar cuenta de Telegram." });
+    }
+    yield supabase.from(telegramTokenTable).delete().eq("token", token);
+    res
+        .status(200)
+        .send({ message: "Cuenta de Telegram enlazada satisfactoriamente." });
+}));
+exports.routes = router;

@@ -11,7 +11,7 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3000;
 app.use(express_1.default.json());
-app.use("/api/send-alert", routes_1.sendAlertRouter);
+app.use("/api", routes_1.routes);
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
